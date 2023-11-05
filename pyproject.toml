@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stuart"
+version = "0.0.0"
+requires-python = ">=3.10"
+# cf. https://pypi.org/classifiers/
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Environment :: Console",
+    "Environment :: No Input/Output (Daemon)",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Topic :: Database :: Front-Ends",
+    "Topic :: Games/Entertainment :: Simulation",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "Flask",
+    "Flask-Bootstrap",
+    "Flask-WTF",
+    "gunicorn",
+    # "lethbridge",
+]
+
+[project.license]
+file = "LICENSE"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "flake8",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-order",
+    "pytest-reportlog",
+]
+
+[tool.setuptools.package-dir]
+stuart = "src"
+
+[tool.pytest.ini_options]
+# Invoke smoke tests with `pytest -k smoke`.  See also
+# https://docs.pytest.org/en/stable/mark.html,
+# https://stackoverflow.com/a/52369721.
+markers = [
+    "smoke",
+]
