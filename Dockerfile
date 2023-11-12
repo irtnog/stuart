@@ -18,51 +18,53 @@
 # Default to this version of Python.  Override via a build argument.
 ARG BASE_VERSION=3.11
 
-# This container image definition uses a multi-stage build process;
-# cf. https://pythonspeed.com/articles/multi-stage-docker-python/.
-# The first stage defines the build environment and should include
-# everything needed to compile, install, and test the project.
-FROM python:${PYTHON_VERSION} as builder
+# Start with an image based on the selected Python version.
+FROM python:${BASE_VERSION} as base
+ARG BASE_VERSION
+ENV BASE_VERSION=${BASE_VERSION}
 RUN set -eux; \
-    groupadd -g 1001 stuart; \
-    useradd -m -g 1001 -u 1001 stuart; \
+    groupadd -g 2000 stuart; \
+    useradd -m -g 2000 -u 2000 stuart
+ENV PATH=/home/stuart/.local/bin:$PATH
+WORKDIR /home/stuart
+# Drop root privileges to hinder container escapes.
+USER stuart:stuart
+
+# The first stage defines the build environment and includes
+# everything needed to compile and install the project.
+FROM base as builder
+COPY LICENSE pyproject.toml .
+COPY src src
+RUN set -eux; \
+    pip install .[psycopg2cffi]; \
+    echo "from psycopg2cffi import compat\ncompat.register()" \
+    > /home/stuart/.local/lib/python${BASE_VERSION}/site-packages/psycopg2.py
+
+# The second stage defines the test environment and verifies the
+# software installed in the first stage.
+FROM builder as tester
+USER root
+RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends mariadb-server postgresql
-ENV PATH=/home/stuart/.local/bin:$PATH
-COPY --chown=stuart:stuart . /home/stuart/src
-WORKDIR /home/stuart/src
 USER stuart:stuart
-RUN pip install --user .[psycopg2cffi]
-COPY --chown=stuart:stuart <<EOF /home/stuart/.local/lib/python${PYTHON_VERSION}/site-packages/psycopg2.py
-from psycopg2cffi import compat
-compat.register()
-EOF
-# Prevent testing tools from cluttering up the release image by
-# installing them into a virtual environment.
-ENV VIRTUAL_ENV=/home/stuart/src/.venv
+ENV VIRTUAL_ENV=/home/stuart/.venv
 ENV PATH=$VIRUAL_ENV/bin:$PATH
+COPY tests tests
 RUN set -eux; \
     python -m venv --system-site-packages .venv; \
     pip install --user .[test]; \
-# Store test results with the installation where they will be copied
-# into the released container image as a kind of certification.
-    pytest --cov=stuart --report-log=/home/stuart/.local/pytest.out
+    pytest --cov=stuart --report-log=pytest.out
 
-# The second stage defines the released container image and should
-# only include what's required to run the software in production to
-# hinder pivoting.
-FROM python:${PYTHON_VERSION}
-RUN set -eux; \
-    groupadd -g 1001 stuart; \
-    useradd -m -g 1001 -u 1001 stuart
-ENV PATH=/home/stuart/.local/bin:$PATH
-# Use the software installed and tested by the builder.
-# (Re-installing runs the risk of installing a different version of a
-# dependency, which invalidates the test results.)
+# The third stage defines the released container image and should only
+# include what's required to run the software in production to hinder
+# pivoting.
+FROM base
+# Re-installing runs the risk of installing a different version of a
+# dependency, which invalidates the test results.
 COPY --from=builder /home/stuart/.local /home/stuart/.local
-COPY docker-entrypoint.sh /usr/local/bin/
+# Include the test report as a kind of airworthiness certificate.
+COPY --from=tester /home/stuart/pytest.out .
+COPY --chown=root:root --chmod=755 docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-WORKDIR /home/stuart
-# Drop root privileges in production to hinder container escapes.
-USER stuart:stuart
 CMD ["gunicorn","-b0.0.0.0:8080","stuart.wsgi:app"]
