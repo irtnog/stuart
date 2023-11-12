@@ -15,7 +15,8 @@
 # License along with this program.  If not, see
 # <https://www.gnu.org/licenses/>.
 
-ARG PYTHON_VERSION=3.10
+# Default to this version of Python.  Override via a build argument.
+ARG BASE_VERSION=3.11
 
 # This container image definition uses a multi-stage build process;
 # cf. https://pythonspeed.com/articles/multi-stage-docker-python/.
