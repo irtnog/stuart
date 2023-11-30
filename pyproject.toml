@@ -24,7 +24,7 @@ dependencies = [
     "Flask-Bootstrap",
     "Flask-WTF",
     "gunicorn",
-    # "lethbridge",
+    "lethbridge",
 ]
 
 [project.license]
