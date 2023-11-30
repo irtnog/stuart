@@ -44,6 +44,12 @@ dev = [
     "twine",
     "yapf",
 ]
+psycopg2 = [
+    "psycopg2",
+]
+psycopg2cffi = [
+    "psycopg2cffi",
+]
 test = [
     "pytest",
     "pytest-cov",
