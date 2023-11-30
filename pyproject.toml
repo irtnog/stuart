@@ -32,8 +32,17 @@ file = "LICENSE"
 
 [project.optional-dependencies]
 dev = [
+    "autopep8",
     "black",
+    "build",
     "flake8",
+    "isort",
+    "id",
+    "jedi",
+    "pre-commit",
+    "python-semantic-release",
+    "twine",
+    "yapf",
 ]
 test = [
     "pytest",
