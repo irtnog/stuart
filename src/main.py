@@ -15,8 +15,9 @@
 # License along with this program.  If not, see
 # <https://www.gnu.org/licenses/>.
 
-from flask import Blueprint
 import logging
+
+from flask import Blueprint
 
 # configure module-level logging
 logger = logging.getLogger(__name__)

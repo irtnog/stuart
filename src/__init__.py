@@ -16,8 +16,9 @@
 # <https://www.gnu.org/licenses/>.
 
 import logging
-import pkg_resources
 import pkgutil
+
+import pkg_resources
 
 __app_name__ = __name__
 __version__ = pkg_resources.require(__app_name__)[0].version

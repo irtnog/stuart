@@ -15,13 +15,13 @@
 # License along with this program.  If not, see
 # <https://www.gnu.org/licenses/>.
 
-from . import __app_name__
-from . import __path__
-from flask import Blueprint
-from flask import Flask
 import importlib
 import logging
 import pkgutil
+
+from flask import Blueprint, Flask
+
+from . import __app_name__, __path__
 
 # configure module-level logging
 logger = logging.getLogger(__name__)
