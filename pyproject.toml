@@ -42,8 +42,6 @@ test = [
     "pytest-reportlog",
 ]
 
-[tool.setuptools.package-dir]
-stuart = "src"
 
 [tool.pytest.ini_options]
 # Invoke smoke tests with `pytest -k smoke`.  See also
@@ -52,3 +50,6 @@ stuart = "src"
 markers = [
     "smoke",
 ]
+
+[tool.setuptools.package-dir]
+stuart = "src"
