@@ -61,6 +61,10 @@ test = [
 file = "README.md"
 content-type = "text/markdown"
 
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+
 [tool.pytest.ini_options]
 # Invoke smoke tests with `pytest -k smoke`.  See also
 # https://docs.pytest.org/en/stable/mark.html,
