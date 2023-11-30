@@ -9,13 +9,14 @@ requires-python = ">=3.10"
 # cf. https://pypi.org/classifiers/
 classifiers = [
     "Development Status :: 1 - Planning",
-    "Environment :: Console",
     "Environment :: No Input/Output (Daemon)",
-    "Intended Audience :: Developers",
+    "Framework :: Flask",
+    "Intended Audience :: System Administrators",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Topic :: Database :: Front-Ends",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
     "Topic :: Games/Entertainment :: Simulation",
     "Topic :: Utilities",
 ]
