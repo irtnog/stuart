@@ -22,7 +22,6 @@ classifiers = [
 ]
 dependencies = [
     "Flask",
-    "Flask-Bootstrap",
     "Flask-WTF",
     "gunicorn",
     "lethbridge",
