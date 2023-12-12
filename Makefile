@@ -19,7 +19,8 @@
 
 PYV = $(shell python3 -c "import sys;print('{}.{}'.format(*sys.version_info[:2]))")
 
-dev-infra: .venv/lib/python$(PYV)/site-packages/psycopg2.py
+dev-infra: .venv/lib/python$(PYV)/site-packages/psycopg2.py \
+	.venv/bin/bashbrew .venv/bin/manifest-tool
 
 .venv/lib/python$(PYV)/site-packages/psycopg2.py: stuart.egg-info
 	echo "from psycopg2cffi import compat\ncompat.register()" > $@
@@ -75,6 +76,26 @@ container docker:
 
 prune:
 	docker system prune --all --volumes --force
+
+bashbrew: .venv/bin/bashbrew
+
+.venv/bin/bashbrew: .venv
+# cf. https://stackoverflow.com/a/40119933
+	$(eval TMP := $(shell mktemp -d))
+	git clone --depth=1 https://github.com/docker-library/bashbrew $(TMP)
+	cd $(TMP); go mod download
+	cd $(TMP); ./bashbrew.sh --version
+	cp $(TMP)/bin/bashbrew $@
+	rm -rf $(TMP)
+
+manifest-tool: .venv/bin/manifest-tool
+
+.venv/bin/manifest-tool: .venv
+	$(eval TMP := $(shell mktemp -d))
+	git clone --depth=1 https://github.com/estesp/manifest-tool $(TMP)
+	cd $(TMP); make binary
+	cp $(TMP)/manifest-tool $@
+	rm -rf $(TMP)
 
 # Install (or remove) build dependencies on Debian/Ubuntu.  Note that
 # these targets must be invoked by root.  Also note that the
