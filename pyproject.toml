@@ -21,8 +21,8 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "Flask",
-    "Flask-WTF",
+    "flask",
+    "flask-wtf",
     "gunicorn",
     "lethbridge",
 ]
