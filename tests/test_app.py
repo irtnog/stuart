@@ -1,4 +1,4 @@
-# stuart, web front end for Elite: Dangerous game data collated by lethbridge
+# stuart, a self-hostable game data aggregator for Elite: Dangerous
 # Copyright (C) 2023  Matthew X. Economou
 #
 # This program is free software: you can redistribute it and/or modify
