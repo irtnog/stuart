@@ -15,10 +15,41 @@
 # License along with this program.  If not, see
 # <https://www.gnu.org/licenses/>.
 
-from stuart.app import create_app
+from pytest import mark
 
 
-def test_app():
-    with create_app().test_client() as test_client:
-        response = test_client.get("/")
-        assert response.status_code == 200
+@mark.order("first")
+@mark.smoke
+def test_app(client):
+    response = client.get("/")
+    assert 200 <= response.status_code < 400
+
+
+@mark.order("first")
+@mark.smoke
+def test_https_redirect(client):
+    response = client.get(
+        "/",
+        environ_overrides={"wsgi.url_scheme": "http"},
+    )
+    assert response.status_code == 302
+    assert response.location.startswith("https://")
+
+
+@mark.order("first")
+@mark.smoke
+def test_security_headers(client):
+    response = client.get(
+        "/",
+        environ_overrides={"wsgi.url_scheme": "https"},
+    )
+    assert response.status_code == 200
+    for security_header in [
+        "X-Content-Type-Options",
+        "Content-Security-Policy",
+        "Referrer-Policy",
+        "Permissions-Policy",
+        "Strict-Transport-Security",
+        "X-Frame-Options",
+    ]:
+        assert security_header in response.headers

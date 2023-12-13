@@ -20,14 +20,18 @@ import logging
 import pkgutil
 
 from flask import Blueprint, Flask
+from flask_talisman import Talisman
 
 from . import __app_name__, __path__
 
 # configure module-level logging
 logger = logging.getLogger(__name__)
 
+# create Flask extension objects
+talisman = Talisman()
 
-def create_app(test_config=None):
+
+def create_app(test_config=None) -> Flask:
     # create and configure the web app
     app = Flask(__app_name__, instance_relative_config=True)
     app.config.from_mapping(SECRET_KEY="dev")
@@ -35,6 +39,9 @@ def create_app(test_config=None):
         app.config.from_mapping(test_config)
     else:
         app.config.from_pyfile("config.py", silent=True)
+
+    # load extensions
+    talisman.init_app(app)
 
     # load blueprints from submodules
     [
