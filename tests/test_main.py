@@ -15,16 +15,18 @@
 # License along with this program.  If not, see
 # <https://www.gnu.org/licenses/>.
 
-import logging
+from pytest import mark
 
-from flask import Blueprint, render_template
-
-# configure module-level logging
-logger = logging.getLogger(__name__)
-
-bp = Blueprint(__name__.split(".")[-1], __name__, url_prefix="")
+from stuart import __version__
 
 
-@bp.route("/")
-def home():
-    return render_template("home.html")
+@mark.order("first")
+@mark.smoke
+def test_main(client):
+    response = client.get(
+        "/",
+        environ_overrides={"wsgi.url_scheme": "https"},
+    )
+    assert response.status_code == 200
+    assert "<!DOCTYPE html>" in response.text
+    assert __version__ in response.text

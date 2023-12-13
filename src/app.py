@@ -20,28 +20,39 @@ import logging
 import pkgutil
 
 from flask import Blueprint, Flask
+from flask_bootstrap import Bootstrap5
 from flask_talisman import Talisman
 
-from . import __app_name__, __path__
+from . import __app_name__, __path__, __version__
 
 # configure module-level logging
 logger = logging.getLogger(__name__)
 
 # create Flask extension objects
+bootstrap = Bootstrap5()
 talisman = Talisman()
 
 
 def create_app(test_config=None) -> Flask:
     # create and configure the web app
     app = Flask(__app_name__, instance_relative_config=True)
-    app.config.from_mapping(SECRET_KEY="dev")
+    app.config.from_mapping(
+        BOOTSTRAP_BOOTSWATCH_THEME="cyborg",
+        BOOTSTRAP_SERVE_LOCAL=True,
+        SECRET_KEY="dev",
+    )
     if test_config:
         app.config.from_mapping(test_config)
     else:
         app.config.from_pyfile("config.py", silent=True)
 
     # load extensions
+    bootstrap.init_app(app)
     talisman.init_app(app)
+
+    # pass functions/variables to Jinja templates; see also
+    # flask.Flask.context_processor
+    app.jinja_env.globals["stuart_version"] = __version__
 
     # load blueprints from submodules
     [

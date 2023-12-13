@@ -39,8 +39,11 @@ venv: .venv
 .venv:
 	python3 -m venv $@
 
-debug run: .venv/lib/python$(PYV)/site-packages/psycopg2.py
-	. .venv/bin/activate; python3 -m flask --debug --app stuart.app run
+debug: .venv/lib/python$(PYV)/site-packages/psycopg2.py
+	. .venv/bin/activate; python3 -m flask --debug --app stuart.app run $(ARGS)
+
+run: .venv/lib/python$(PYV)/site-packages/psycopg2.py
+	. .venv/bin/activate; python3 -m flask --app stuart.app run $(ARGS)
 
 smoke: .venv/lib/python$(PYV)/site-packages/psycopg2.py
 	. .venv/bin/activate; pytest -m "smoke and not slow"

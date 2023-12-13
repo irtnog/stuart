@@ -21,6 +21,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
+    "bootstrap-flask",
     "flask",
     "flask-talisman",
     "flask-wtf",
