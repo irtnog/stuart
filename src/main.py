@@ -26,5 +26,5 @@ bp = Blueprint(__name__.split(".")[-1], __name__, url_prefix="")
 
 
 @bp.route("/")
-def home():
-    return render_template("home.html")
+def index():
+    return render_template("index.html")
