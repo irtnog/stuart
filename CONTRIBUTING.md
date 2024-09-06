@@ -32,11 +32,18 @@ The following code styles are in use:
 
 ## Commit Messages
 
-This project implements [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) using [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).  Valid commit types are:
+This project implements
+[Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) using
+[Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+Please use English in commit messages.  The first line of the commit
+message should be at most 100 characters, while the rest of the commit
+message should be wrapped at column 70.  A commit's description should
+be a verb phrase in the imperative present tense, with the starting
+verb in lower case and no ending punctuation.
+
+Valid commit types are:
 
 - **build**—changes to the build system or external dependencies
-
-- **ci**—changes to the CI configuration files and scripts
 
 - **docs**—documentation-only changes
 
@@ -48,18 +55,21 @@ This project implements [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0
 
 - **refactor**—a code change that neither fixes a bug nor adds a feature
 
+- **style**—a code change that only affects formatting
+
 - **test**—new tests or corrections to existing tests
 
-A commit's scope should be the second-level Python module name sans the `stuart.` prefix or any suffixes with a few exceptions.  Valid commit scopes are:
+A commit's scope should be the second-level Python module name sans
+the top-level module prefix or any suffixes with a few exceptions:
 
-- [stuart](src/__init__.py)—for the corresponding top-level dunder module
+- **stuart**—the top-level
+  [dunder](https://wiki.python.org/moin/DunderAlias) modules,
+  including both [`__init__.py`](src/__init__.py) and
+  [`__main__.py`](src/__main__.py)
 
-- [app](src/app.py)—the web application, using [Flask](https://flask.palletsprojects.com/)
+- **packaging**—package layout or other metadata, e.g., the
+  arrangement of [src/](src/), alterations to
+  [pyproject.toml](pyproject.toml) or [Dockerfile](Dockerfile)
 
-- [main](src/main.py)—the main web page and related routes
-
-- [wsgi](src/wsgi.py)—the [WSGI adapter](https://en.wikipedia.org/wiki/Web_Server_Gateway_Interface), for use with [gunicorn](https://gunicorn.org/)
-
-- **packaging**—package layout or other metadata, e.g., the arrangement of [src/](src/), alterations to [pyproject.toml](pyproject.toml) or [Dockerfile](Dockerfile)
-
-- no scope—for **refactor** or **test** changes covering multiple packages; or for **build**, **ci**, or **doc** changes not specific to one package
+- no scope—for changes covering multiple scopes or changes not
+  specific to one scope
