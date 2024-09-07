@@ -75,7 +75,6 @@ $(addprefix .git/hooks/, \
 # When adding an alias for a build artifact, add it to this list; cf.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html.
 .PHONY: \
-	bashbrew \
 	build-deps \
 	clean \
 	clean-deps \
@@ -85,7 +84,6 @@ $(addprefix .git/hooks/, \
 	distcheck \
 	distclean \
 	lint \
-	manifest-tool \
 	pre-commit \
 	run \
 	setup \
@@ -132,28 +130,10 @@ pre-commit: $(PRE_COMMIT_HOOKS)
 
 # Set up the development environment.
 setup: $(PYPACKAGE_NAME).egg-info
-$(PYPACKAGE_NAME).egg-info: pyproject.toml src/*.py | bashbrew manifest-tool
+$(PYPACKAGE_NAME).egg-info: pyproject.toml src/*.py | venv
 	. .venv/bin/activate; python -m pip install -e .[psycopg2cffi,dev,test]
 	echo "from psycopg2cffi import compat\ncompat.register()" \
 		> .venv/lib/python$(PYTHON_VERSION)/site-packages/psycopg2.py
-
-bashbrew: .venv/bin/bashbrew
-.venv/bin/bashbrew: | venv
-# cf. https://stackoverflow.com/a/40119933
-	$(eval TMP := $(shell mktemp -d))
-	git clone --depth=1 https://github.com/docker-library/bashbrew $(TMP)
-	cd $(TMP); go mod download
-	cd $(TMP); ./bashbrew.sh --version
-	cp $(TMP)/bin/bashbrew $@
-	rm -rf $(TMP)
-
-manifest-tool: .venv/bin/manifest-tool
-.venv/bin/manifest-tool: | venv
-	$(eval TMP := $(shell mktemp -d))
-	git clone --depth=1 https://github.com/estesp/manifest-tool $(TMP)
-	cd $(TMP); make binary
-	cp $(TMP)/manifest-tool $@
-	rm -rf $(TMP)
 
 # Create the development environment.
 venv: .venv
@@ -183,7 +163,7 @@ build-deps:
 				&& $(APT_GET) install python3.12-full \
 				&& curl https://bootstrap.pypa.io/get-pip.py \
 					| python3.12 -)) \
-		&& (which mk-build-deps \
+		&& (which mk-build-deps > /dev/null \
 			|| ($(APT_GET) install $(DEBIAN_BUILD_DEPS) \
 				&& mk-build-deps -i -r -t "$(APT_GET)" \
 					python3-psycopg2 \
