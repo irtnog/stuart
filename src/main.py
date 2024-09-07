@@ -22,7 +22,7 @@ from flask import Blueprint, render_template
 # configure module-level logging
 logger = logging.getLogger(__name__)
 
-bp = Blueprint(__name__.split(".")[-1], __name__, url_prefix="")
+bp = Blueprint(__name__.split(".")[-1], __name__)
 
 
 @bp.route("/")
