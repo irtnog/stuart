@@ -24,7 +24,8 @@ Additional [make(1)](https://linux.die.net/man/1/make) targets are available.  R
 
 The following code styles are in use:
 
-- [Python Black](https://black.readthedocs.io/) and [isort](https://pycqa.github.io/isort/)
+- [Python Black](https://black.readthedocs.io/) and
+  [isort](https://pycqa.github.io/isort/)
 
 - [Dockerfile best practices](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
 
