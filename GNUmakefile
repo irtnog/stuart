@@ -15,79 +15,130 @@
 # License along with this program.  If not, see
 # <https://www.gnu.org/licenses/>.
 
-.PHONY: dev-infra venv debug run smoke test tests tests coverage dist \
-	distcheck distclean pre-commit check checks list builder \
-	tester container docker prune bashbrew manifest-tool \
-	build-deps clean-deps clean
+# Search a colon-separated list of directories for one of the given
+# programs, returning the first match.
+pathsearch = \
+$(or \
+	$(firstword \
+		$(foreach a, $(2), \
+			$(wildcard $(addsuffix /$(a), $(subst :, , $(1)))))), \
+	$(3))
 
-# Install Stuart in a virtual environment.  (See also the build-deps target.)
+# Search the Python virtual environment and the executable search path
+# for the programs in the listed order, returning the first match.
+venvsearch = \
+$(if $(call pathsearch,.venv/bin,$(1)), \
+	. .venv/bin/activate; $(1), \
+	$(call pathsearch,$(PATH),$(1),exit 1; echo $(1)))
 
-PYV = $(shell python3 -c "import sys;print('{}.{}'.format(*sys.version_info[:2]))")
+# Develop using the latest available supported version of Python.
+PYTHON = \
+$(call pathsearch,$(PATH),python3.12 python3.11 python3.10,exit 1; echo python3)
+PYTHON_VERSION = \
+$(shell $(PYTHON) -c "import sys;print('{}.{}'.format(*sys.version_info[:2]))")
 
-dev-infra: .venv/lib/python$(PYV)/site-packages/psycopg2.py \
-	.venv/bin/bashbrew .venv/bin/manifest-tool
+# Use these tools from the development environment, if available.
+PRE_COMMIT = $(call venvsearch,pre-commit)
+PYTEST	   = $(call venvsearch,pytest)
+TOMLQ	   = $(call venvsearch,tomlq)
+YQ	   = $(call venvsearch,yq)
 
-.venv/lib/python$(PYV)/site-packages/psycopg2.py: stuart.egg-info
-	echo "from psycopg2cffi import compat\ncompat.register()" > $@
+# Determine the host operating system.
+UNAME       = $(or $(shell uname))
+LSB_RELEASE = $(call pathsearch,$(PATH),lsb_release,exit 1; echo lsb_release)
+DISTRO      = $(if $(filter Linux, $(UNAME)), $(or $(shell $(LSB_RELEASE) -is)))
 
-stuart.egg-info: .venv pyproject.toml src/*.py
-	. .venv/bin/activate; pip install -U pip setuptools
-	. .venv/bin/activate; pip install -e .[psycopg2cffi,dev,test]
+# Use these settings when developing on Debian/Ubuntu.
+APT_GET = \
+	apt-get -o Debug::pkgProblemResolver=yes -y --no-install-recommends
+DEBIAN_BUILD_DEPS = \
+	build-essential \
+	devscripts \
+	equivs \
+	postgresql \
 
-venv: .venv
+# Get the package name.
+PYPACKAGE_NAME = \
+$(shell $(TOMLQ) -r '.tool.setuptools."package-dir"|keys[0]' pyproject.toml)
 
-.venv:
-	python3 -m venv $@
+# List in-use pre-commit hooks.
+PRE_COMMIT_HOOKS = \
+$(addprefix .git/hooks/, \
+	$(shell \
+		$(YQ) -r ".repos[].hooks[].stages[]" .pre-commit-config.yaml \
+			2>/dev/null \
+		| sort -u \
+	) \
+	pre-commit \
+)
 
-debug: .venv/lib/python$(PYV)/site-packages/psycopg2.py
-	. .venv/bin/activate; python3 -m flask --debug --app stuart.app run $(ARGS)
+# When adding an alias for a build artifact, add it to this list; cf.
+# https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html.
+.PHONY: \
+	bashbrew \
+	build-deps \
+	clean \
+	clean-deps \
+	coverage \
+	debug \
+	dist \
+	distcheck \
+	distclean \
+	lint \
+	manifest-tool \
+	pre-commit \
+	run \
+	setup \
+	smoke \
+	test \
+	tests \
+	venv \
 
-run: .venv/lib/python$(PYV)/site-packages/psycopg2.py
-	. .venv/bin/activate; python3 -m flask --app stuart.app run $(ARGS)
+# Debug/run the web app.
+debug: .coverage
+	. .venv/bin/activate; python -m flask --debug --app stuart.app run $(ARGS)
 
-smoke: .venv/lib/python$(PYV)/site-packages/psycopg2.py
-	. .venv/bin/activate; pytest -m "smoke and not slow"
+run: .coverage
+	. .venv/bin/activate; python -m flask --app stuart.app run $(ARGS)
 
-test tests: .venv/lib/python$(PYV)/site-packages/psycopg2.py
-	. .venv/bin/activate; pytest
-
-coverage: .venv/lib/python$(PYV)/site-packages/psycopg2.py
-	. .venv/bin/activate; pytest --cov=stuart
-
-dist: .venv/lib/python$(PYV)/site-packages/psycopg2.py
+# Build the distribution.
+dist: .coverage
 	. .venv/bin/activate; python -m build
 
-distcheck: dist
+distcheck:
 	. .venv/bin/activate; twine check dist/*
 
 distclean:
 	rm -rf dist
 
-# Install, run, or update pre-commit hooks.
+# Run the test suite.
+test tests coverage: .coverage
+.coverage: $(PYPACKAGE_NAME).egg-info tests/*.py
+	$(PYTEST) --cov=$(PYPACKAGE_NAME) $(PYTEST_ARGS)
 
-pre-commit: .git/hooks/pre-commit
+smoke: $(PYPACKAGE_NAME).egg-info tests/*.py
+	$(PYTEST) -m "smoke and not slow" $(PYTEST_ARGS)
 
-.git/hooks/pre-commit: .pre-commit-config.yaml .venv/lib/python$(PYV)/site-packages/psycopg2.py
-	. .venv/bin/activate; pre-commit install --install-hooks
+# Run the linter (including unstaged changes).
+lint: $(PRE_COMMIT_HOOKS)
+	$(PRE_COMMIT) run --show-diff-on-failure --all-files
 
-check checks lint: .git/hooks/pre-commit
-	. .venv/bin/activate; pre-commit validate-config
-	. .venv/bin/activate; pre-commit validate-manifest
-	. .venv/bin/activate; pre-commit run --show-diff-on-failure --all-files
+# Install the pre-commit hooks.
+pre-commit: $(PRE_COMMIT_HOOKS)
+.git/hooks/%: .pre-commit-config.yaml | setup
+	$(PRE_COMMIT) validate-config
+	$(PRE_COMMIT) validate-manifest
+	$(PRE_COMMIT) install --install-hooks --hook-type $*
 
-# Install Stuart in a container image.
-builder tester:
-	docker build -t stuart:$@ --target $@ .
-
-container docker:
-	docker build -t stuart .
-
-prune:
-	docker system prune --all --volumes --force
+# Set up the development environment.
+setup: $(PYPACKAGE_NAME).egg-info
+$(PYPACKAGE_NAME).egg-info: pyproject.toml src/*.py | bashbrew manifest-tool
+	. .venv/bin/activate; python -m pip install -e .[psycopg2cffi,dev,test]
+	echo "from psycopg2cffi import compat\ncompat.register()" \
+		> .venv/lib/python$(PYTHON_VERSION)/site-packages/psycopg2.py
 
 bashbrew: .venv/bin/bashbrew
-
-.venv/bin/bashbrew: .venv
+.venv/bin/bashbrew: | venv
 # cf. https://stackoverflow.com/a/40119933
 	$(eval TMP := $(shell mktemp -d))
 	git clone --depth=1 https://github.com/docker-library/bashbrew $(TMP)
@@ -97,42 +148,58 @@ bashbrew: .venv/bin/bashbrew
 	rm -rf $(TMP)
 
 manifest-tool: .venv/bin/manifest-tool
-
-.venv/bin/manifest-tool: .venv
+.venv/bin/manifest-tool: | venv
 	$(eval TMP := $(shell mktemp -d))
 	git clone --depth=1 https://github.com/estesp/manifest-tool $(TMP)
 	cd $(TMP); make binary
 	cp $(TMP)/manifest-tool $@
 	rm -rf $(TMP)
 
-# Install (or remove) build dependencies on Debian/Ubuntu.  Note that
-# these targets must be invoked by root.  Also note that the
-# purge-deps target can remove packages other that the ones listed
-# here, so keep the confirmation prompts to avoid footguns.
+# Create the development environment.
+venv: .venv
+.venv:
+	$(PYTHON) -m venv $@
+	. .venv/bin/activate; python -m pip install -U pip-with-requires-python
+	. .venv/bin/activate; python -m pip install -U pip setuptools
 
-DEBIAN_BUILD_DEPS = build-essential devscripts equivs postgresql
-DEBIAN_INSTALL_TOOL = apt-get -o Debug::pkgProblemResolver=yes -y --no-install-recommends
-
-build-deps: /etc/debian_version
-ifneq ($(shell id -u), 0)
-	@echo You must be root to perform this action.
-	@exit 1
-endif
-	sed -i '/deb-src/s/^# //' /etc/apt/sources.list
-	apt-get update
-	$(DEBIAN_INSTALL_TOOL) install $(DEBIAN_BUILD_DEPS)
-	mk-build-deps -i -r -t "$(DEBIAN_INSTALL_TOOL)" python3-psycopg2
-	mk-build-deps -i -r -t "$(DEBIAN_INSTALL_TOOL)" python3-psycopg2cffi
-	rm -f *.buildinfo *.changes
-
-clean-deps: /etc/debian_version
-ifneq ($(shell id -u), 0)
-	@echo You must be root to perform this action.
-	@exit 1
-endif
-	apt-mark auto $(DEBIAN_BUILD_DEPS) psycopg2-build-deps python-psycopg2cffi-build-deps
-	apt-get autoremove
-
+# Remove build artifacts and reset the development environment.
 clean:
-	rm -rf build .coverage dist stuart.egg-info .pytest_cache .venv*
+	rm -rf build .coverage dist *.egg-info .pytest_cache .venv* \
+		$(PRE_COMMIT_HOOKS)
 	find . -type d -name __pycache__ -print | xargs rm -rf
+
+# Install development tools and build dependencies (requires local
+# administrator rights).
+build-deps:
+	$(if $(UNAME), \
+		$(if $(filter 0, $(or $(shell id -u))),, \
+			@echo You must be root to perform this action.; exit 1))
+	$(if $(filter Debian Ubuntu, $(DISTRO)), \
+		sed -i '/deb-src/s/^# //' /etc/apt/sources.list \
+		&& apt-get update \
+		&& (which jq > /dev/null || ($(APT_GET) install jq)) \
+		&& (which python3.12 > /dev/null \
+			|| (add-apt-repository -y ppa:deadsnakes/ppa \
+				&& $(APT_GET) install python3.12-full \
+				&& curl https://bootstrap.pypa.io/get-pip.py \
+					| python3.12 -)) \
+		&& (which mk-build-deps \
+			|| ($(APT_GET) install $(DEBIAN_BUILD_DEPS) \
+				&& mk-build-deps -i -r -t "$(APT_GET)" \
+					python3-psycopg2 \
+				&& mk-build-deps -i -r -t "$(APT_GET)" \
+					python3-psycopg2cffi \
+				&& rm -f *.buildinfo *.changes)))
+
+# This could remove packages other that the ones listed, so keep any
+# confirmation prompts (requires local administrator rights).
+clean-deps:
+	$(if $(UNAME), \
+		$(if $(filter 0, $(or $(shell id -u))),, \
+			@echo You must be root to perform this action.; exit 1))
+	$(if $(filter Debian Ubuntu, $(DISTRO)), \
+		apt-mark auto \
+			$(DEBIAN_BUILD_DEPS) \
+			psycopg2-build-deps \
+			python-psycopg2cffi-build-deps \
+		&& apt-get autoremove)

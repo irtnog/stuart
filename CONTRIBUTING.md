@@ -4,21 +4,42 @@ This project uses the [Git feature branch workflow](https://www.atlassian.com/gi
 
 ## Development Environment
 
-This project requires Python 3.10 or newer.  To set up your development environment on Linux, run these commands from the project root directory:
+This project requires Python 3.10 or newer.  To set up your
+development environment on Linux, run these commands from the project
+root directory:
 
-- `sudo make build-deps`—installs build dependencies (Debian/Ubuntu only)
+- `sudo make build-deps`—installs development tools and build
+  dependencies on supported operating systems, e.g., Python
 
-- `make`—creates a virtual environment named `.venv` in the current working directory and performs an editable installation of this project, including development and testing tools
+- `make setup`—creates (or updates) a
+  [Python virtual environment](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/#create-and-use-virtual-environments)
+  named `.venv` in the project root directory and performs an editable
+  installation of this project plus development and testing tools
 
-- `make pre-commit`—installs pre-commit hooks (requires the virtual environment to be active in your code editor or [Git porcelain](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain))
+- `make pre-commit`—configures optional pre-commit hooks; requires the
+  virtual environment to be active in your code editor or
+  [Git porcelain](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain)
 
-- `make test`—performs comprehensive functional and integration testing of this project
+- `make clean`—resets the development environment
+
+- `sudo make clean-deps`—uninstalls development tools and build
+  dependencies on supported operating systems
+
+Additional [make(1)](https://linux.die.net/man/1/make) targets are
+available, several of which are listed below.  Review the
+[makefile](GNUmakefile) for details.
+
+- `make lint`—check code syntax and style
+
+- `make test`—performs comprehensive functional and integration
+  testing of this project
 
 - `make smoke`—runs a shorter, faster subset of the test suite
 
-- `make docker`—builds a fully tested and release-ready container image
+- `make debug`—runs the Flask web app with debugging enabled
 
-Additional [make(1)](https://linux.die.net/man/1/make) targets are available.  Review the [Makefile](Makefile) for details.
+- `make docker`—builds a fully tested and release-ready container
+  image
 
 ## Code Style
 
