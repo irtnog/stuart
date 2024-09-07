@@ -1,0 +1,343 @@
+---
+name: Continuous Integration
+
+
+# Trigger this workflow manually, by pushing commits to any branch, or
+# by filing a pull request.
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      # Check out the repository as of this commit and cache the
+      # working directory for use in other jobs or for re-use if
+      # re-running the workflow (e.g., something outside of GitHub
+      # Actions broke).
+      - id: cache-workdir
+        uses: actions/cache@v4
+        with:
+          key: workdir-${{ github.sha }}
+          path: .
+
+      # Python Semantic Release needs the history of all branches/tags
+      # to calculate the next version number and build the change log.
+      - if: steps.cache-workdir.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Fingerprint the source code.  Use this identifier instead of
+      # the commit ID to prevent non-code changes from altering
+      # builds.
+      - id: hash-source-code
+        run: |
+          echo "hash=$(find pyproject.toml src tests -type f -exec cat '{}' \; | sha512sum | awk '{print $1}')" >> $GITHUB_OUTPUT
+        shell: bash
+    outputs:
+      source-hash: ${{ steps.hash-source-code.outputs.hash }}
+
+
+  lint:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache/restore@v4
+        with:
+          key: workdir-${{ github.sha }}
+          path: .
+
+      # Install linter dependencies here; for example:
+      # - uses: opentofu/setup-opentofu@v1.0.2
+      # - uses: terraform-linters/setup-tflint@v4
+
+      # Double-check code syntax/style.  This ought to happen in a
+      # pre-commit hook, but not everyone may have that installed.
+      - uses: pre-commit/action@v3.0.1
+
+
+  freeze:
+    needs:
+      - setup
+      - lint
+    runs-on: ubuntu-latest
+    steps:
+      # Only do this once.  Testing (the next step) should reveal any
+      # compatibility issues.  Source code changes, such as an updated
+      # version constraint in pyproject.toml, will automatically
+      # invalidate the list of pinned dependencies and trigger its
+      # regeneration since we're keying off the source hash.
+      - id: cache-requirements
+        uses: actions/cache@v4
+        with:
+          key: requirements-${{ needs.setup.outputs.source-hash }}
+          lookup-only: true
+          path: requirements.txt
+      - if: steps.cache-requirements.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          key: workdir-${{ github.sha }}
+          path: .
+
+      # Use the oldest supported version of Python when generating
+      # dependency pins to catch forward compatibility issues.  Keep
+      # this in sync with the test-matrix and build-matrix jobs; cf.
+      # https://devguide.python.org/versions/.
+      - if: steps.cache-requirements.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+      - if: steps.cache-requirements.outputs.cache-hit != 'true'
+        id: setup-pip-tools
+        run: pip install pip-tools
+
+      # Make builds reproducible by pinning every dependency as of
+      # this moment.  That way, anyone can re-build this version of
+      # the project later and get the same result without tasking
+      # developers with version pin maintenance.
+      - if: steps.cache-requirements.outputs.cache-hit != 'true'
+        id: freeze-deps
+        run: pip-compile -o requirements.txt pyproject.toml
+
+
+  test-matrix:
+    needs:
+      - setup
+      - freeze
+    strategy:
+      # Keep this in sync with the freeze and build-matrix jobs; cf.
+      # https://devguide.python.org/versions/.
+      matrix:
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
+    runs-on: ubuntu-latest
+    steps:
+      # Tests take a long time to run, so only re-run them when (1)
+      # they fail or (2) when the source code changes.  This step
+      # caches the output of a successful test run.  Subsequent steps
+      # only run if that cache doesn't exist.  (GitHub Actions jobs
+      # can only exit early with an error; cf.
+      # https://github.com/orgs/community/discussions/26885.)
+      - id: cache-pytest-results
+        uses: actions/cache@v4
+        with:
+          key: pytest-${{ matrix.python-version }}-${{ needs.setup.outputs.source-hash }}
+          lookup-only: true
+          path: pytest.out
+
+      # Test against all supported language runtimes using the
+      # dependency versions pinned above.
+      - if: steps.cache-pytest-results.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          key: requirements-${{ needs.setup.outputs.source-hash }}
+          path: requirements.txt
+      - if: steps.cache-pytest-results.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          key: workdir-${{ github.sha }}
+          path: .
+      - if: steps.cache-pytest-results.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # Set up the testing environment.
+      - if: steps.cache-pytest-results.outputs.cache-hit != 'true'
+        run: |
+          pip install -e .[test]
+
+      # Run the test suite and generate a code coverage report.
+      - if: steps.cache-pytest-results.outputs.cache-hit != 'true'
+        uses: pavelzw/pytest-action@v2
+        with:
+          custom-arguments: --cov=stuart --report-log=pytest.out
+
+
+  release:
+    needs:
+      - setup
+      - test-matrix
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      # Allow this job to log into GitHub and thereby update its
+      # permissions.  (Think of this like adding someone to
+      # `sudoers`.)  Then give the job permission to update the change
+      # log and to tag the release via Python Semantic Release.
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/cache/restore@v4
+        with:
+          key: requirements-${{ needs.setup.outputs.source-hash }}
+          path: requirements.txt
+      - uses: actions/cache/restore@v4
+        with:
+          key: workdir-${{ github.sha }}
+          path: .
+      - id: release
+        uses: python-semantic-release/python-semantic-release@v8.3.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The build process might download and run third-party code, so
+      # pass the now release-ready source code to an unprivileged job.
+      - uses: actions/cache/save@v4
+        with:
+          key: release-${{ github.sha }}
+          path: .
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      tag: ${{ steps.release.outputs.tag }}
+
+
+  build-matrix:
+    needs:
+      - release
+    if: needs.release.outputs.released == 'true'
+    strategy:
+      # Use the oldest supported version of Python when building pure
+      # Python packages.  Otherwise, keep this in sync with the freeze
+      # and test-matrix jobs; cf.
+      # https://devguide.python.org/versions/.
+      matrix:
+        python-version:
+          - '3.10'
+    runs-on: ubuntu-latest
+    steps:
+      # Build the distribution.
+      - uses: actions/cache/restore@v4
+        with:
+          key: release-${{ github.sha }}
+          path: .
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install build
+      - run: python -m build
+
+      # Third parties should be able to build the exact same
+      # distribution for verification purposes.
+      - run: cp requirements*.txt dist/
+
+      # The build process could run malicious third-party code in a
+      # supply chain attack, so this job doesn't run with elevated
+      # privileges.  Instead, it uploads the built distribution into
+      # an immutable archive (a GitHub Actions Artifact) that
+      # subsequent, privileged jobs will publish on PyPI, GitHub, etc.
+      - uses: actions/upload-artifact@v4
+        with:
+          path: dist/*
+          if-no-files-found: error
+
+
+  testpypi:
+    needs:
+      - release
+      - build-matrix
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/stuart
+    permissions:
+      # Allow this job to log into TestPyPI using the GitHub OIDC
+      # identity provider instead of static credentials; cf.
+      # https://docs.pypi.org/trusted-publishers/.
+      id-token: write
+    steps:
+      - uses: actions/cache/restore@v3
+        with:
+          key: release-${{ github.sha }}
+          path: .
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      # Publish built distributions to TestPyPI first.  This will
+      # catch any problems before publishing to PyPI, which imposes
+      # strict limits on project names and package uploads; cf.
+      # https://pypi.org/help/#administration.
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          print-hash: true
+          verbose: true
+
+
+  pypi:
+    needs:
+      - release
+      - build-matrix
+      - testpypi
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      # Allow this job to log into PyPI using the GitHub OIDC identity
+      # provider instead of static credentials; cf.
+      # https://docs.pypi.org/trusted-publishers/.
+      name: pypi
+      url: https://pypi.org/p/stuart
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/cache/restore@v3
+        with:
+          key: release-${{ github.sha }}
+          path: .
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      # Publish built distributions to PyPI if the test publication
+      # succeeded.
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
+          verbose: true
+
+
+  github:
+    needs:
+      - release
+      - build-matrix
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      # Allow this job to log into GitHub and thereby update its
+      # permissions.  Then give the job permission to create a release
+      # on GitHub.
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/cache/restore@v4
+        with:
+          key: release-${{ github.sha }}
+          path: .
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      # Publish built distributions to GitHub.
+      - uses: python-semantic-release/upload-to-gh-release@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ needs.release.outputs.tag }}

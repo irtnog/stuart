@@ -4,8 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stuart"
-version = "0.1.0"
 description = "A self-hostable game data aggregator for Elite: Dangerous"
+version = "0.1.0"
+# cf. https://www.bitecode.dev/p/relieving-your-python-packaging-pain,
+# https://devguide.python.org/versions/
 requires-python = ">=3.10"
 # cf. https://pypi.org/classifiers/
 classifiers = [
@@ -21,6 +23,9 @@ classifiers = [
     "Topic :: Games/Entertainment :: Simulation",
     "Topic :: Utilities",
 ]
+# To avoid unnecessary developer overhead, only set version
+# constraints to address capability, compatibility, or security
+# issues, and avoid pinning specific versions if possible.
 dependencies = [
     "bootstrap-flask",
     "flask",
