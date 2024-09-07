@@ -47,6 +47,7 @@ dev = [
     "isort",
     "id",
     "jedi",
+    "pip-tools",
     "pre-commit",
     "python-semantic-release",
     "twine",
