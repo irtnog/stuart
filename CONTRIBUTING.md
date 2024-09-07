@@ -1,6 +1,13 @@
 # Contributing
 
-This project uses the [Git feature branch workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/feature-branch-workflow).  Please submit your changes for review as a [GitHub pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests).
+This project combines [test-driven development](https://tdd.mooc.fi/),
+[atomic commits](https://www.aleksandrhovhannisyan.com/blog/atomic-git-commits/),
+a [linear commit history](https://archive.is/VpWTs), and the
+[Git feature branch workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/feature-branch-workflow).
+Please rebase your changes on the latest HEAD of the main branch
+before submitting them for review as a
+[GitHub pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests).
+Changes must include updated functional and integration tests.
 
 ## Development Environment
 
@@ -48,9 +55,14 @@ The following code styles are in use:
 - [Python Black](https://black.readthedocs.io/) and
   [isort](https://pycqa.github.io/isort/)
 
+- [the Home Assistant YAML style guide](https://developers.home-assistant.io/docs/documenting/yaml-style-guide/)
+
+- [the Google Markdown style guide](https://google.github.io/styleguide/docguide/style.html),
+  but with a more traditional 70-character line limit
+
 - [Dockerfile best practices](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
 
-- [the Home Assistant YAML style guide](https://developers.home-assistant.io/docs/documenting/yaml-style-guide/)
+- [AWS CloudFormation best practices](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/best-practices.html)
 
 ## Commit Messages
 
