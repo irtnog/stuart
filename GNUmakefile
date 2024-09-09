@@ -61,6 +61,11 @@ DEBIAN_BUILD_DEPS = \
 PYPACKAGE_NAME = \
 $(shell $(TOMLQ) -r '.tool.setuptools."package-dir"|keys[0]' pyproject.toml)
 
+# Recursively list code, content, and test articles (as well as
+# related work in progress).
+SOURCEISH=$(or $(shell git ls-tree --full-tree --name-only -r HEAD src tests))
+UNTRACKED=$(or $(shell git ls-files --others --exclude-standard src tests))
+
 # List in-use pre-commit hooks.
 PRE_COMMIT_HOOKS = \
 $(addprefix .git/hooks/, \
@@ -110,11 +115,10 @@ distclean:
 	rm -rf dist
 
 # Run the test suite.
-test tests coverage: .coverage
-.coverage: $(PYPACKAGE_NAME).egg-info tests/*.py
+test tests coverage .coverage: $(PYPACKAGE_NAME).egg-info $(SOURCEISH) $(UNTRACKED)
 	$(PYTEST) --cov=$(PYPACKAGE_NAME) $(PYTEST_ARGS)
 
-smoke: $(PYPACKAGE_NAME).egg-info tests/*.py
+smoke: $(PYPACKAGE_NAME).egg-info
 	$(PYTEST) -m "smoke and not slow" $(PYTEST_ARGS)
 
 # Run the linter (including unstaged changes).
@@ -123,21 +127,19 @@ lint: $(PRE_COMMIT_HOOKS)
 
 # Install the pre-commit hooks.
 pre-commit: $(PRE_COMMIT_HOOKS)
-.git/hooks/%: .pre-commit-config.yaml | setup
+.git/hooks/%: .pre-commit-config.yaml $(PYPACKAGE_NAME).egg-info
 	$(PRE_COMMIT) validate-config
 	$(PRE_COMMIT) validate-manifest
 	$(PRE_COMMIT) install --install-hooks --hook-type $*
 
 # Set up the development environment.
-setup: $(PYPACKAGE_NAME).egg-info
-$(PYPACKAGE_NAME).egg-info: pyproject.toml src/*.py | venv
+setup $(PYPACKAGE_NAME).egg-info: pyproject.toml .venv
 	. .venv/bin/activate; python -m pip install -e .[psycopg2cffi,dev,test]
 	echo "from psycopg2cffi import compat\ncompat.register()" \
 		> .venv/lib/python$(PYTHON_VERSION)/site-packages/psycopg2.py
 
 # Create the development environment.
-venv: .venv
-.venv:
+venv .venv:
 	$(PYTHON) -m venv $@
 	. .venv/bin/activate; python -m pip install -U pip-with-requires-python
 	. .venv/bin/activate; python -m pip install -U pip setuptools
