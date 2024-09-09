@@ -41,10 +41,10 @@ def create_app(test_config=None) -> Flask:
         BOOTSTRAP_SERVE_LOCAL=True,
         SECRET_KEY="dev",
     )
-    if test_config:
-        app.config.from_mapping(test_config)
-    else:
+    if test_config is None:
         app.config.from_pyfile("config.py", silent=True)
+    else:
+        app.config.from_mapping(test_config)
 
     # load extensions
     bootstrap.init_app(app)
