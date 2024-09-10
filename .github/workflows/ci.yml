@@ -236,10 +236,6 @@ jobs:
       - run: pip install build
       - run: python -m build
 
-      # Third parties should be able to build the exact same
-      # distribution for verification purposes.
-      - run: cp requirements*.txt dist/
-
       # The build process could run malicious third-party code in a
       # supply chain attack, so this job doesn't run with elevated
       # privileges.  Instead, it uploads the built distribution into
@@ -340,6 +336,10 @@ jobs:
         with:
           path: dist/
           merge-multiple: true
+
+      # Third parties should be able to build the exact same
+      # distribution for verification purposes.
+      - run: cp requirements*.txt dist/
 
       # Publish built distributions to GitHub.
       - uses: python-semantic-release/upload-to-gh-release@main
