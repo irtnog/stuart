@@ -21,7 +21,6 @@ from stuart import __version__
 
 
 @mark.order("first")
-@mark.smoke
 def test_main(client):
     response = client.get(
         "/",

@@ -18,6 +18,10 @@
 import logging
 
 from flask import Blueprint, render_template
+from lethbridge.database import System
+from lethbridge.schemas.spansh import SystemSchema
+
+from .app import db
 
 # configure module-level logging
 logger = logging.getLogger(__name__)
@@ -29,3 +33,8 @@ bp = Blueprint(__name__.split(".")[-1], __name__, url_prefix=f"/{url_prefix}")
 @bp.route("/")
 def index():
     return render_template(f"{url_prefix}/index.html")
+
+
+@bp.route("/<int:id64>", methods=["GET"])
+def get_system_by_id(id64: int):
+    return SystemSchema().dump(db.get_or_404(System, id64))

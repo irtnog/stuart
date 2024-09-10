@@ -29,6 +29,7 @@ classifiers = [
 dependencies = [
     "bootstrap-flask",
     "flask",
+    "flask-sqlalchemy",
     "flask-talisman",
     "flask-wtf",
     "gunicorn",
@@ -61,13 +62,16 @@ psycopg2cffi = [
     "psycopg2cffi",
 ]
 test = [
+    "psycopg2",
     "pytest",
     "pytest-cov",
     "pytest-emoji",
     "pytest-flask",
     "pytest-md",
     "pytest-order",
+    "pytest-postgresql",
     "pytest-reportlog",
+    "simplejson",
 ]
 
 [project.readme]

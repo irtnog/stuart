@@ -19,14 +19,12 @@ from pytest import mark
 
 
 @mark.order("first")
-@mark.smoke
 def test_app(client):
     response = client.get("/")
     assert 200 <= response.status_code < 400
 
 
 @mark.order("first")
-@mark.smoke
 def test_https_redirect(client):
     response = client.get(
         "/",
@@ -37,7 +35,6 @@ def test_https_redirect(client):
 
 
 @mark.order("first")
-@mark.smoke
 def test_security_headers(client):
     response = client.get(
         "/",

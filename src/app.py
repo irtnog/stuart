@@ -21,7 +21,10 @@ import pkgutil
 
 from flask import Blueprint, Flask
 from flask_bootstrap import Bootstrap5
+from flask_sqlalchemy import SQLAlchemy
 from flask_talisman import Talisman
+from lethbridge.config import DEFAULT_CONFIG
+from lethbridge.database import Base
 
 from . import __app_name__, __path__, __version__
 
@@ -30,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 # create Flask extension objects
 bootstrap = Bootstrap5()
+db = SQLAlchemy(model_class=Base)
 talisman = Talisman()
 
 
@@ -40,6 +44,7 @@ def create_app(test_config=None) -> Flask:
         BOOTSTRAP_BOOTSWATCH_THEME="cyborg",
         BOOTSTRAP_SERVE_LOCAL=True,
         SECRET_KEY="dev",
+        SQLALCHEMY_DATABASE_URI=DEFAULT_CONFIG["database"]["uri"],
     )
     if test_config is None:
         app.config.from_pyfile("config.py", silent=True)
@@ -48,6 +53,7 @@ def create_app(test_config=None) -> Flask:
 
     # load extensions
     bootstrap.init_app(app)
+    db.init_app(app)
     talisman.init_app(app)
 
     # pass functions/variables to Jinja templates; see also

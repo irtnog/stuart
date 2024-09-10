@@ -158,7 +158,12 @@ jobs:
       # Set up the testing environment.
       - if: steps.cache-pytest-results.outputs.cache-hit != 'true'
         run: |
-          pip install -e .[test]
+          sudo make build-deps
+          pip install -e .[psycopg2cffi,test]
+          USER_SITE=`python -m site --user-site`
+          mkdir -p "${USER_SITE}"
+          echo "from psycopg2cffi import compat" > "${USER_SITE}/psycopg2.py"
+          echo "compat.register()" >> "${USER_SITE}/psycopg2.py"
 
       # Run the test suite and generate a code coverage report.
       - if: steps.cache-pytest-results.outputs.cache-hit != 'true'

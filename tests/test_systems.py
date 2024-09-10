@@ -21,8 +21,9 @@ from pytest import mark, param
 @mark.parametrize(
     "arg, status_code",
     [
-        param("", 308, marks=mark.smoke),
-        param("/", 200, marks=mark.smoke),
+        param("", 308),
+        param("/", 200),
+        param("/1865903245675", 200),
     ],
 )
 def test_systems(client, arg, status_code):
