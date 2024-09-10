@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "stuart"
 description = "A self-hostable game data aggregator for Elite: Dangerous"
-version = "0.1.0"
+version = "0.2.0"
 # cf. https://www.bitecode.dev/p/relieving-your-python-packaging-pain,
 # https://devguide.python.org/versions/
 requires-python = ">=3.10"
